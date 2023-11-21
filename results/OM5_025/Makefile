@@ -200,6 +200,8 @@ mask_tables: $(FRE_NCTOOLS)/check_mask ocean_mosaic.nc ocean_topog.nc
 	$(FRE_NCTOOLS)/check_mask --grid_file ocean_mosaic.nc --ocean_topog ocean_topog.nc --layout 45,72
 	touch $@
 
+check:
+	md5sum -c hash.md5
 
 # Include additional makefile(s) defining input datasets
 include *.mk
