@@ -107,31 +107,14 @@ ocean_topog_merged.nc: ocean_topog_MERC.nc ocean_topog_SO.nc ocean_topog_BP.nc
 # Path of legacy OM4 preprocessing code
 MOM6_EXAMPLES_PREPROC = /opt/tools/MOM6-examples/ice_ocean_SIS2/OM4_025/preprocessing
 
-ocean_topog_edited.nc: ocean_topog_merged.nc
-	# Use the existing OM4 topography edits
-	cp $(MOM6_EXAMPLES_PREPROC)/OM4_topography_edits.nc adjusted_om4_edits.nc
-	
-	# Shift OM4 topog edits by 40 points; all edits were done on a 
-	# larger grid and last step of the OM4 preprocessing chain was to 
-	# drop the first 40 rows. The 120 value below deontes where on the
-	# OM4 nj=1080 grid that this new grid diverges from the existing one.
-	$(PYTHON3) $(TOOLDIR)/auxillary/adjust_topo_edit_jindex.py \
-        adjusted_om4_edits.nc 41 120
-	
-	# The OM4 convention had a flipped sign convention
-	cp ocean_topog_merged.nc tmp.nc 
-	ncap2 -hs "depth=depth*(-1)" tmp.nc tmp2.nc
-	
+ocean_topog_edited.nc: ocean_topog_merged.nc om5_topo_edits.nc
 	# Apply the topography edits using the legacy OM4 tool
-	$(PYTHON2) $(MOM6_EXAMPLES_PREPROC)/apply_edits.py adjusted_om4_edits.nc tmp2.nc
-	cp tmp2.nc $(@F)
+	cp ocean_topog_merged.nc tmp.nc 
+	$(PYTHON2) $(MOM6_EXAMPLES_PREPROC)/apply_edits.py om5_topo_edits.nc tmp.nc
+	cp tmp.nc $(@F)
 	
-	# Flip the sign back 
-	# ncap2 -hs "depth=depth*(-1)" tmp2.nc $(@F)
-	
-	# Remove temporary files
+	# Remove temporary file
 	rm -f tmp.nc
-	rm -f tmp2.nc
 
 
 # Part 2c: Flood-filling & Connectivity (ICE-9)
@@ -144,29 +127,21 @@ ocean_topog_edited.nc: ocean_topog_merged.nc
 # file written by the model at runtime.)
 
 ocean_topog_ice9ed.nc: ocean_topog_edited.nc
-	ice9.py ocean_topog_edited.nc --variable 'depth' \
+	# Flip the sign
+	ncap2 -hs "depth=depth*(-1)" $< tmp.nc
+	
+	ice9.py tmp.nc --variable 'depth' \
         --iseed 10 --jseed 200 --output $(@F)
 	
-	# Flip the sign back 
-	# ncap2 -hs "depth=depth*(-1)" tmp3.nc $(@F)
+	# Remove temporary file
+	rm -f tmp.nc
 
-
-# Part 2d: Reset the wet mask to match OM4
-# ----------------------------------------
-
-# This step resets the new wet mask to be identical to the existing OM4
-# wet mask.
-
-ocean_topog_adjusted_mask.nc: ocean_topog_ice9ed.nc
-	$(PYTHON3) $(TOOLDIR)/auxillary/reset_wet_mask.py \
-        $(GOLD_DIR)/OM4_025/mosaic.v20170622.unpacked/ocean_topog.nc \
-        ocean_topog_ice9ed.nc $(@F)
-
-ocean_topog.nc: ocean_topog_adjusted_mask.nc
-	cp ocean_topog_adjusted_mask.nc topog.nc
+ocean_topog.nc: ocean_topog_ice9ed.nc
+	cp $< topog.nc
 	ncatted -h -a creation_date,global,c,c,"`date`" topog.nc
-	ncatted -h -a source,global,c,c,"GEBCO 2020 remapped via RSC with OM4_025 land mask applied" topog.nc
+	ncatted -h -a source,global,c,c,"GEBCO 2023 remapped via RSC" topog.nc
 	ncatted -h -a topo_edits,global,c,c,"True" topog.nc
+	#$(PYTHON2) $(MOM6_EXAMPLES_PREPROC)/addDimension.py topog.nc ntiles 1
 	cp topog.nc ocean_topog.nc
 
 
