@@ -25,3 +25,6 @@
 [submodule "MOM6-examples"]
 	path = MOM6-examples
 	url = https://github.com/jkrasting/MOM6-examples
+[submodule "thin-wall-topography"]
+	path = thin-wall-topography
+	url = https://github.com/adcroft/thin-wall-topography.git
