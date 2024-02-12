@@ -28,3 +28,6 @@
 [submodule "thin-wall-topography"]
 	path = thin-wall-topography
 	url = https://github.com/adcroft/thin-wall-topography.git
+[submodule "om5_topo_edits"]
+	path = om5_topo_edits
+	url = https://github.com/breichl/om5_topo_edits.git
