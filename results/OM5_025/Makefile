@@ -12,7 +12,6 @@
 #        2a: Interpolared Topography with Subgrid Tiles
 #        2b: Topgraphy Edits
 #        2c: Flood-filling & Connectivity (ICE-9)
-#        2d: Reset the wet mask to match OM4
 #
 #     Part 3: FMS Grid Spec, Mosaic Files, and Mask Tables
 #
@@ -56,44 +55,28 @@ ocean_hgrid.nc:
             --match_dy so
  
 
-# Part 2a: Interpolared Topography with Subgrid Tiles
-# ---------------------------------------------------
-
-OCEAN_TOPOG_TOOL = create_topog_refinedSampling.py
+# Part 2a: Interpolated Topography
+# --------------------------------
 
 # The source topography for OM5 is GEBCO 2023, which incorporates IBCAO and
 # BEDMACHINE updates that were processed separately in OM4. This command
 # below specifies the source location for the GEBCO 2023 data and the variable
 # names contained within the file.
 
-OCEAN_TOPOG_SRC = --source_file $(GOLD_DIR)/topography/GEBCO_2023/GEBCO_2023.nc \
-                  --source_lon lon \
-                  --source_lat lat \
-                  --source_elv elevation 
+source_topog.nc:
+	ln -s $(GOLD_DIR)/topography/GEBCO_2023/GEBCO_2023.nc source_topog.nc
 
-# Bipolar Cap
-ocean_topog_BP.nc: 
-	$(OCEAN_TOPOG_TOOL) --hgridfilename ./ocean_hgrid.ncBP.nc \
-        --max_refine=5 --nxblocks=4 \
-        --outputfilename $(@F) $(OCEAN_TOPOG_SRC)
+new_topo_OM5_grid_r8_24x387.nc: source_topog.nc
+	cp -v $(TOOLDIR)/auxillary/Generate-OM5-topo.ipynb .
+	cp -v $(TOOLDIR)/thin-wall-topography/python/GMesh.py .
+	jupyter nbconvert --to notebook --execute Generate-OM5-topo.ipynb --output Generate-OM5-topo.ipynb
 
-# Mercator Region
-ocean_topog_MERC.nc: 
-	$(OCEAN_TOPOG_TOOL) --hgridfilename ./ocean_hgrid.ncMerc.nc \
-        --max_refine=5 --nxblocks=4 \
-        --outputfilename $(@F) $(OCEAN_TOPOG_SRC)
-
-# Southern Ocean Spherical Grid
-ocean_topog_SO.nc: 
-	$(OCEAN_TOPOG_TOOL) --hgridfilename ./ocean_hgrid.ncSO.nc \
-        --max_refine=5 --nxblocks=4 \
-        --outputfilename $(@F) $(OCEAN_TOPOG_SRC)
-
-# Merge all tiles together
-ocean_topog_merged.nc: ocean_topog_MERC.nc ocean_topog_SO.nc ocean_topog_BP.nc
-	merge_topog_tiles.py \
-        --tilefiles ocean_topog_SO.nc,ocean_topog_MERC.nc,ocean_topog_BP.nc \
-        --outputfilename $(@F)
+ocean_topog_merged.nc: new_topo_OM5_grid_r8_24x387.nc
+	cp new_topo_OM5_grid_r8_24x387.nc ocean_topog_merged.nc
+	ncatted -O -a units,depth,a,c,"meters" ocean_topog_merged.nc
+	ncatted -O -a description,depth,a,c,"Non-negative nominal thickness of the ocean at cell centers" ocean_topog_merged.nc
+	ncatted -O -a units,h2,a,c,"meters^2" ocean_topog_merged.nc
+	ncatted -O -a standard_name,h2,a,c,"Variance of sub-grid scale topography" ocean_topog_merged.nc
 
 
 # Part 2b: Topgraphy Edits
@@ -102,10 +85,24 @@ ocean_topog_merged.nc: ocean_topog_MERC.nc ocean_topog_SO.nc ocean_topog_BP.nc
 # Topography edits are applied both in the preprocessing workflow and
 # also at model runtime. The preprocessing edits are necessary in order
 # to create connectivity that is required for the flood-filling
-# alogiright (ICE-9) used in the next step.
+# alogrightm (ICE-9) used in the next step.  The topo edits are contained
+# within the Jupyter notebooks in `om5_topo_edits`. The notebooks are
+# executed in batch to create NetCDF files of edits for each region. The
+# regions are combined together to make a single topo edits file that is 
+# applied to interpolated topography.
 
 # Path of legacy OM4 preprocessing code
 MOM6_EXAMPLES_PREPROC = /opt/tools/MOM6-examples/ice_ocean_SIS2/OM4_025/preprocessing
+
+om5_topo_edits:
+	cp -rp /opt/tools/om5_topo_edits .
+
+om5_topo_edits.nc: om5_topo_edits ocean_topog_merged.nc
+	cp -v ocean_topog_merged.nc om5_topo_edits/.
+	cd om5_topo_edits && ln -s ocean_topog_merged.nc regridded_source_topog.nc
+	cd om5_topo_edits && ln -s ../ocean_hgrid.nc .
+	cd om5_topo_edits && export PYDEVD_DISABLE_FILE_VALIDATION=1 && ./run_batch.sh 2>&1 | tee batch_output.txt
+	cd om5_topo_edits && ./combine_nc_edits.py -o ../om5_topo_edits.nc om5_topo_edits_region_*.nc
 
 ocean_topog_edited.nc: ocean_topog_merged.nc om5_topo_edits.nc
 	# Apply the topography edits using the legacy OM4 tool
@@ -139,14 +136,14 @@ ocean_topog_ice9ed.nc: ocean_topog_edited.nc
 ocean_topog.nc: ocean_topog_ice9ed.nc
 	cp $< topog.nc
 	ncatted -h -a creation_date,global,c,c,"`date`" topog.nc
-	ncatted -h -a source,global,c,c,"GEBCO 2023 remapped via RSC" topog.nc
+	ncatted -h -a source,global,c,c,"GEBCO 2023 remapped via GMesh.py (Jan 2024 version)" topog.nc
 	ncatted -h -a topo_edits,global,c,c,"True" topog.nc
 	#$(PYTHON2) $(MOM6_EXAMPLES_PREPROC)/addDimension.py topog.nc ntiles 1
 	cp topog.nc ocean_topog.nc
 
 
 # Part 3: FMS Grid Spec, Mosaic Files, and Mask Tables
-# --------------------------------------
+# ----------------------------------------------------
 
 ocean_mosaic.nc: ocean_hgrid.nc ocean_topog.nc
 	$(FRE_NCTOOLS)/make_solo_mosaic \
@@ -179,4 +176,13 @@ mask_tables: $(FRE_NCTOOLS)/check_mask ocean_mosaic.nc ocean_topog.nc
 # Include additional makefile(s) defining input datasets
 include *.mk
 
-all: grid_spec.nc INPUT INPUT/salt_restore_JRA.nc JRA_runoff_data
+grid_spec_bundle.tar: grid_spec.nc mask_tables
+	tar -cvf grid_spec_bundle.tar ocean_topog.nc ocean_mosaic.nc ocean_mask.nc land_mask.nc *_tile1X* grid_spec.nc ocean_hgrid.nc* mask_table*
+
+INPUT.tar: INPUT INPUT/salt_restore_JRA.nc
+	tar -cvf INPUT.tar INPUT
+
+JRA_data.tar: JRA_runoff_data JRA_output
+	tar -cvf JRA_data.tar JRA_output
+
+all: grid_spec_bundle.tar INPUT.tar JRA_data.tar
