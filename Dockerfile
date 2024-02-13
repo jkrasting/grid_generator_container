@@ -64,7 +64,7 @@ ARG UNPRIV_USER=griduser
 USER $UNPRIV_USER
 
 # Create a new conda environment with Python 3.11 and the necessary packages
-RUN mamba create -y -n py311 python=3.11 numpy scipy matplotlib cartopy netcdf4 pytest xarray dask numba tqdm xesmf xgcm seawater jupyter
+RUN mamba create -y -n py311 python=3.11 numpy scipy matplotlib cartopy netcdf4 pytest xarray dask numba tqdm xesmf xgcm seawater jupyter cmocean
 
 # Create a Python 2.7 environment for the legacy tools
 RUN mamba create -y -n py27 python=2.7 numpy basemap blas cftime geos glib gstreamer hdf4 hdf5 matplotlib netcdf4 proj4 pyproj scipy gsw
