@@ -53,7 +53,30 @@ ocean_hgrid.nc:
             --south_ocean_lower_lat -88.57 \
             --no_south_cap \
             --match_dy so
- 
+
+
+# BedMachine Topography
+# ---------------------
+
+# Supergrid index corresponding to j-row 280
+J60S := 562
+
+bedmachine_remapped_bed.nc: ocean_hgrid.nc
+	$(PYTHON3) $(TOOLDIR)/auxillary/remap_bedmachine.py \
+          ocean_hgrid.nc $(J60S) bed \
+          $(GOLD_DIR)/topography/BedMachineAntarctica_2020-07-15_v02.nc \
+          $(@F)
+
+bedmachine_remapped_surface.nc: ocean_hgrid.nc bedmachine_remapped_bed.nc
+	$(PYTHON3) $(TOOLDIR)/auxillary/remap_bedmachine.py \
+          ocean_hgrid.nc $(J60S) surface \
+          $(GOLD_DIR)/topography/BedMachineAntarctica_2020-07-15_v02.nc \
+          $(@F)
+
+bedmachine_remapped_surface_with_bed.nc: bedmachine_remapped_surface.nc bedmachine_remapped_bed.nc
+	$(PYTHON3) $(TOOLDIR)/auxillary/combine_bedmachine_surface_bed.py \
+          bedmachine_remapped_surface.nc bedmachine_remapped_bed.nc $(@F)
+
 
 # Part 2a: Interpolated Topography
 # --------------------------------
@@ -133,14 +156,25 @@ ocean_topog_ice9ed.nc: ocean_topog_edited.nc
 	# Remove temporary file
 	rm -f tmp.nc
 
-ocean_topog.nc: ocean_topog_ice9ed.nc
+ocean_topog_GEBCO.nc: ocean_topog_ice9ed.nc
 	cp $< topog.nc
 	ncatted -h -a creation_date,global,c,c,"`date`" topog.nc
 	ncatted -h -a source,global,c,c,"GEBCO 2023 remapped via GMesh.py (Jan 2024 version)" topog.nc
 	ncatted -h -a topo_edits,global,c,c,"True" topog.nc
 	#$(PYTHON2) $(MOM6_EXAMPLES_PREPROC)/addDimension.py topog.nc ntiles 1
-	cp topog.nc ocean_topog.nc
+	cp topog.nc $(@F)
 
+ocean_topog_GEBCO_bedmachine_surface.nc: ocean_topog_GEBCO.nc bedmachine_remapped_surface_with_bed.nc
+	$(PYTHON3) $(TOOLDIR)/auxillary/replace_depth_values.py \
+          ocean_topog_GEBCO.nc depth bedmachine_remapped_surface_with_bed.nc surface 280 $(@F)
+
+ocean_topog_GEBCO_bedmachine_bed.nc: ocean_topog_GEBCO.nc bedmachine_remapped_bed.nc
+	$(PYTHON3) $(TOOLDIR)/auxillary/replace_depth_values.py \
+          ocean_topog_GEBCO.nc depth bedmachine_remapped_bed.nc bed 280 $(@F)
+
+ocean_topog.nc: ocean_topog_GEBCO_bedmachine_surface.nc
+	ncap2 -s 'where(depth<0) depth=0;' ocean_topog_GEBCO_bedmachine_surface.nc $(@F)
+	cp -v ocean_topog.nc topog.nc
 
 # Part 3: FMS Grid Spec, Mosaic Files, and Mask Tables
 # ----------------------------------------------------
