@@ -27,7 +27,7 @@ def proj_xy(lon, lat, PROJSTRING):
     return xx, yy
 
 
-def main(hgrid, j60s, src, dest):
+def main(hgrid, j60s, bedvar, src, dest):
     PROJSTRING = "+proj=stere +lat_0=-90 +lat_ts=-71 +lon_0=0 +k=1 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs"
 
     # ---------------- bedmachine + reduction
@@ -47,10 +47,10 @@ def main(hgrid, j60s, src, dest):
 
     out = xr.Dataset()
 
-    bed = compute_block(
+    remapped = compute_block(
         xx_model,
         yy_model,
-        bedmachine["bed"].values,
+        bedmachine[bedvar].values,
         xx_bm_full,
         yy_bm_full,
         is_stereo=False,
@@ -60,8 +60,8 @@ def main(hgrid, j60s, src, dest):
     )
 
     out = xr.Dataset()
-    out["bed"] = xr.DataArray(data=bed[0, :, :], dims=("y", "x"))
-    out["h2"] = xr.DataArray(data=bed[3, :, :], dims=("y", "x"))
+    out[bedvar] = xr.DataArray(data=remapped[0, :, :], dims=("y", "x"))
+    out["h2"] = xr.DataArray(data=remapped[3, :, :], dims=("y", "x"))
 
     out.to_netcdf(dest)
 
@@ -73,7 +73,8 @@ if __name__ == "__main__":
     # j60s = 562 (index)
     hgrid = sys.argv[1]
     j60s = int(sys.argv[2])
-    src = sys.argv[3]
-    dest = sys.argv[4]
-    main(hgrid, j60s, src, dest)
+    bedvar = sys.argv[3]
+    src = sys.argv[4]
+    dest = sys.argv[5]
+    main(hgrid, j60s, bedvar, src, dest)
 
