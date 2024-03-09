@@ -84,6 +84,7 @@ interpolated_BedMachine/bedmachine_remapped_surface_with_bed.nc: interpolated_Be
 
 interpolated_GEBCO/interpolated_GEBCO_topog.nc: ocean_hgrid.nc
 	mkdir -p interpolated_GEBCO
+	ln -sf ocean_hgrid.nc interpolated_GEBCO/ocean_hgrid.nc
 	# Use sub_ice topog for generating h2 in the ice shelf cavities
 	ln -sf $(GOLD_DIR)/topography/GEBCO_2023/GEBCO_2023.nc interpolated_GEBCO/source_topog.nc
 	# ln -sf $(GOLD_DIR)/topography/GEBCO_2023/GEBCO_2023_sub_ice_topo.nc interpolated_GEBCO/source_topog.nc
