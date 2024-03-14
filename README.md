@@ -19,7 +19,7 @@ singularity build --sandbox grid_generator docker-archive:///archive/jpk/OM5/con
 
 Start the container and mount the O-Division datasets directory:
 ```
-singularity shell --writable -B /archive/gold:/archive/gold grid_generator
+singularity shell --writable -B /archive/gold:/archive/gold -B /archive/cm6:/archive/cm6 grid_generator
 ```
 
 Generate the `grid_spec.nc` file, which will include the horizontal grid and topography:
