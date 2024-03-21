@@ -65,8 +65,8 @@ ocean_hgrid.nc:
 # Supergrid index corresponding to j-row 280
 J60S := 562
 
-#BEDMACH_SOURCE := $(GOLD_DIR)/topography/BedMachineAntarctica-v3.nc
-BEDMACH_SOURCE := $(GOLD_DIR)/topography/BedMachineAntarctica_2020-07-15_v02.nc
+#BEDMACH_SOURCE := $(GOLD_DIR)/topography/BedMachineAntarctica_2020-07-15_v02.nc
+BEDMACH_SOURCE := $(GOLD_DIR)/topography/BedMachineAntarctica-v3.nc
 
 interpolated_BedMachine/bedmachine_remapped_bed.nc: ocean_hgrid.nc
 	mkdir -p interpolated_BedMachine
