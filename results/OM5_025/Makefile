@@ -133,7 +133,7 @@ interpolated_GEBCO/interpolated_GEBCO_topog.nc
 	cd om5_topo_edits && export PYDEVD_DISABLE_FILE_VALIDATION=1 && ./run_batch.sh 2>&1 | tee batch_output.txt
 	cd om5_topo_edits && ./combine_nc_edits.py -o om5_topo_edits.nc om5_topo_edits_region_*.nc
 	# --- use the line below for quick testing
-	cp -vf /archive/jpk/om5_topo_edits_brl_20240321.nc $(@)
+	# cp -vf /archive/jpk/om5_topo_edits_brl_20240321.nc $(@)
 
 
 # Part 2c:  Apply topog edits and assemble GEBCO+BedMachine
