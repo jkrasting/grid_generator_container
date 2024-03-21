@@ -89,15 +89,15 @@ interpolated_GEBCO/interpolated_GEBCO_topog.nc: ocean_hgrid.nc
 	mkdir -p interpolated_GEBCO
 	cd interpolated_GEBCO && ln -sf ../ocean_hgrid.nc .
 	# Use sub_ice topog for generating h2 in the ice shelf cavities
-	ln -sf $(GOLD_DIR)/topography/GEBCO_2023/GEBCO_2023.nc interpolated_GEBCO/source_topog.nc
 	# ln -sf $(GOLD_DIR)/topography/GEBCO_2023/GEBCO_2023_sub_ice_topo.nc interpolated_GEBCO/source_topog.nc
+	ln -sf $(GOLD_DIR)/topography/GEBCO_2023/GEBCO_2023.nc interpolated_GEBCO/source_topog.nc
 	cp -vf $(TOOLDIR)/auxillary/Generate-OM5-topo.ipynb interpolated_GEBCO/.
 	cp -vf $(TOOLDIR)/thin-wall-topography/python/GMesh.py interpolated_GEBCO/.
-	# execute topog generation notebook; cp line is used for quick testing
-	# cd interpolated_GEBCO && export PYDEVD_DISABLE_FILE_VALIDATION=1 && \
-        #    jupyter nbconvert --to notebook --execute Generate-OM5-topo.ipynb --output Generate-OM5-topo.ipynb
-	cd interpolated_GEBCO && cp -vf /archive/jpk/datasets/OM5/OM5_025/v20240311/interpolated_GEBCO/new_topo_OM5_grid_r8_24x387.nc . && cd ../
-	#
+	# -- execute topog generation notebook; cp line is used for quick testing
+	cd interpolated_GEBCO && export PYDEVD_DISABLE_FILE_VALIDATION=1 && \
+            jupyter nbconvert --to notebook --execute Generate-OM5-topo.ipynb --output Generate-OM5-topo.ipynb
+	# --- use the line below for quick testing
+	# cd interpolated_GEBCO && cp -vf /archive/jpk/datasets/OM5/OM5_025/v20240311/interpolated_GEBCO/new_topo_OM5_grid_r8_24x387.nc . && cd ../
 	cp -vf interpolated_GEBCO/new_topo_OM5_grid_r8_24x387.nc $(@)
 	ncatted -O -a units,depth,a,c,"meters" $(@)
 	ncatted -O -a description,depth,a,c,"Non-negative nominal thickness of the ocean at cell centers" $(@)
@@ -124,11 +124,11 @@ om5_topo_edits:
 	cp -rp /opt/tools/om5_topo_edits .
 
 om5_topo_edits/om5_topo_edits.nc: om5_topo_edits interpolated_GEBCO/interpolated_GEBCO_topog.nc
-	### cd om5_topo_edits && ln -sf ../interpolated_GEBCO/interpolated_GEBCO_topog.nc regridded_source_topog.nc
-	### cd om5_topo_edits && ln -sf ../ocean_hgrid.nc .
-	### cd om5_topo_edits && export PYDEVD_DISABLE_FILE_VALIDATION=1 && ./run_batch.sh 2>&1 | tee batch_output.txt
-	### cd om5_topo_edits && ./combine_nc_edits.py -o om5_topo_edits.nc om5_topo_edits_region_*.nc
-	# line below is used for quick testing
+	cd om5_topo_edits && ln -sf ../interpolated_GEBCO/interpolated_GEBCO_topog.nc regridded_source_topog.nc
+	cd om5_topo_edits && ln -sf ../ocean_hgrid.nc .
+	cd om5_topo_edits && export PYDEVD_DISABLE_FILE_VALIDATION=1 && ./run_batch.sh 2>&1 | tee batch_output.txt
+	cd om5_topo_edits && ./combine_nc_edits.py -o om5_topo_edits.nc om5_topo_edits_region_*.nc
+	# --- use the line below for quick testing
 	cp -vf /archive/jpk/om5_topo_edits_brl_20240321.nc $(@)
 
 
