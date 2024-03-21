@@ -82,7 +82,9 @@ interpolated_BedMachine/bedmachine_remapped_surface.nc: ocean_hgrid.nc
           $(BEDMACH_SOURCE) \
           $(@)
 
-interpolated_BedMachine/bedmachine_remapped_surface_with_bed.nc: interpolated_BedMachine/bedmachine_remapped_surface.nc interpolated_BedMachine/bedmachine_remapped_bed.nc
+interpolated_BedMachine/bedmachine_remapped_surface_with_bed.nc: \
+interpolated_BedMachine/bedmachine_remapped_surface.nc \
+interpolated_BedMachine/bedmachine_remapped_bed.nc
 	$(PYTHON3) $(TOOLDIR)/auxillary/combine_bedmachine_surface_bed.py $^ $(@)
 
 interpolated_GEBCO/interpolated_GEBCO_topog.nc: ocean_hgrid.nc
@@ -123,7 +125,9 @@ MOM6_EXAMPLES_PREPROC = /opt/tools/MOM6-examples/ice_ocean_SIS2/OM4_025/preproce
 om5_topo_edits:
 	cp -rp /opt/tools/om5_topo_edits .
 
-om5_topo_edits/om5_topo_edits.nc: om5_topo_edits interpolated_GEBCO/interpolated_GEBCO_topog.nc
+om5_topo_edits/om5_topo_edits.nc: \
+om5_topo_edits \
+interpolated_GEBCO/interpolated_GEBCO_topog.nc
 	cd om5_topo_edits && ln -sf ../interpolated_GEBCO/interpolated_GEBCO_topog.nc regridded_source_topog.nc
 	cd om5_topo_edits && ln -sf ../ocean_hgrid.nc .
 	cd om5_topo_edits && export PYDEVD_DISABLE_FILE_VALIDATION=1 && ./run_batch.sh 2>&1 | tee batch_output.txt
@@ -135,7 +139,8 @@ om5_topo_edits/om5_topo_edits.nc: om5_topo_edits interpolated_GEBCO/interpolated
 # Part 2c:  Apply topog edits and assemble GEBCO+BedMachine
 # ---------------------------------------------------------
 
-assembled_topog/edited_GEBCO.nc: om5_topo_edits/om5_topo_edits.nc interpolated_GEBCO/interpolated_GEBCO_topog.nc
+assembled_topog/edited_GEBCO.nc: om5_topo_edits/om5_topo_edits.nc \
+interpolated_GEBCO/interpolated_GEBCO_topog.nc
 	mkdir -p assembled_topog
 	# Apply the topography edits using the legacy OM4 tool
 	cp interpolated_GEBCO/interpolated_GEBCO_topog.nc tmp.nc 
@@ -154,16 +159,22 @@ assembled_topog/edited_GEBCO_ice9ed.nc: assembled_topog/edited_GEBCO.nc
 
 NROWS := 280
 
-assembled_topog/edited_GEBCO_ice9ed_bedmachine_surface.nc: assembled_topog/edited_GEBCO_ice9ed.nc interpolated_BedMachine/bedmachine_remapped_surface_with_bed.nc
+assembled_topog/edited_GEBCO_ice9ed_bedmachine_surface.nc: \
+assembled_topog/edited_GEBCO_ice9ed.nc \
+interpolated_BedMachine/bedmachine_remapped_surface_with_bed.nc
 	$(PYTHON3) $(TOOLDIR)/auxillary/replace_depth_values.py $< depth $(word 2, $^) surface $(NROWS) $(@)
 
-assembled_topog/edited_GEBCO_ice9ed_bedmachine_bed.nc: assembled_topog/edited_GEBCO_ice9ed.nc interpolated_BedMachine/bedmachine_remapped_bed.nc
+assembled_topog/edited_GEBCO_ice9ed_bedmachine_bed.nc: \
+assembled_topog/edited_GEBCO_ice9ed.nc \
+interpolated_BedMachine/bedmachine_remapped_bed.nc
 	$(PYTHON3) $(TOOLDIR)/auxillary/replace_depth_values.py $< depth $(word 2, $^) bed $(NROWS) $(@)
 
-assembled_topog/edited_GEBCO_ice9ed_bedmachine_surface_zeroed.nc: assembled_topog/edited_GEBCO_ice9ed_bedmachine_surface.nc
+assembled_topog/edited_GEBCO_ice9ed_bedmachine_surface_zeroed.nc: \
+assembled_topog/edited_GEBCO_ice9ed_bedmachine_surface.nc
 	ncap2 -s 'where(depth<0) depth=0;' $< $(@)
 
-assembled_topog/ocean_topog_GEBCO_BedMachine_merged_AISmasked.nc: assembled_topog/edited_GEBCO_ice9ed_bedmachine_surface_zeroed.nc
+assembled_topog/ocean_topog_GEBCO_BedMachine_merged_AISmasked.nc: \
+assembled_topog/edited_GEBCO_ice9ed_bedmachine_surface_zeroed.nc
 	# Flip the sign
 	ncap2 -hs "depth=depth*(-1)" $< tmp.nc
 	ice9.py tmp.nc --variable 'depth' --iseed 10 --jseed 200 --output $(@)
@@ -171,23 +182,33 @@ assembled_topog/ocean_topog_GEBCO_BedMachine_merged_AISmasked.nc: assembled_topo
 	rm -f tmp.nc
 	ncatted -h -a creation_date,global,c,c,"`date`" $(@)
 
-assembled_topog/ocean_topog_GEBCO_BedMachine_merged.nc: assembled_topog/ocean_topog_GEBCO_BedMachine_merged_AISmasked.nc assembled_topog/edited_GEBCO_ice9ed_bedmachine_surface.nc assembled_topog/edited_GEBCO_ice9ed_bedmachine_bed.nc
+assembled_topog/ocean_topog_GEBCO_BedMachine_merged.nc: \
+assembled_topog/ocean_topog_GEBCO_BedMachine_merged_AISmasked.nc \
+assembled_topog/edited_GEBCO_ice9ed_bedmachine_surface.nc \
+assembled_topog/edited_GEBCO_ice9ed_bedmachine_bed.nc
 	$(PYTHON3) $(TOOLDIR)/auxillary/mask_AIS.py $^ $(@)
 	$(PYTHON2) $(MOM6_EXAMPLES_PREPROC)/addDimension.py $(@) ntiles 1
 
-assembled_topog/aismask.nc: assembled_topog/ocean_topog_GEBCO_BedMachine_merged_AISmasked.nc assembled_topog/ocean_topog_GEBCO_BedMachine_merged.nc
+assembled_topog/aismask.nc: \
+assembled_topog/ocean_topog_GEBCO_BedMachine_merged_AISmasked.nc \
+assembled_topog/ocean_topog_GEBCO_BedMachine_merged.nc
 	$(PYTHON3) $(TOOLDIR)/auxillary/isolate_AIS_mask.py $^ tmp.nc
 	ice9.py tmp.nc --variable "aismask" --iseed 10 --jseed 200 --output tmp2.nc
 	ncks -v wet tmp2.nc $(@)
 	rm -f tmp.nc tmp2.nc
 
-ocean_topog.nc: assembled_topog/edited_GEBCO.nc assembled_topog/aismask.nc
+ocean_topog.nc: \
+assembled_topog/edited_GEBCO.nc \
+assembled_topog/aismask.nc
 	$(PYTHON3) $(TOOLDIR)/auxillary/apply_AIS_mask.py $^ tmp.nc
 	ncap2 -hs "depth=depth*(-1)" tmp.nc tmp2.nc
 	ice9.py tmp2.nc --variable "depth" --iseed 10 --jseed 200 --output $(@)
 	rm -f tmp.nc tmp2.nc
 
-ocean_topog_w_AIS.nc: ocean_topog.nc assembled_topog/ocean_topog_GEBCO_BedMachine_merged.nc assembled_topog/aismask.nc
+ocean_topog_w_AIS.nc: \
+ocean_topog.nc \
+assembled_topog/ocean_topog_GEBCO_BedMachine_merged.nc \
+assembled_topog/aismask.nc
 	$(PYTHON3) $(TOOLDIR)/auxillary/set_AIS_to_BedMach.py $^ $(@)
 
 
