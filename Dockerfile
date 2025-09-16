@@ -5,9 +5,9 @@
 
 # Stage 00: Establish the base container
 #----------------------------------------------
-# Use Miniconda3 as base image
-#FROM continuumio/miniconda3:23.3.1-0 as base
-FROM condaforge/miniforge3 as base
+# Use Miniconda3 AS base image
+#FROM continuumio/miniconda3:23.3.1-0 AS base
+FROM condaforge/miniforge3 AS base
 
 # Turn off prompts
 ARG DEBIAN_FRONTEND=noninteractive
@@ -40,7 +40,7 @@ RUN usermod -d /pad/$UNPRIV_USER $UNPRIV_USER
 
 # Stage 0: Compiler Tools
 #----------------------------------------------
-FROM base as compiler
+FROM base AS compiler
 
 # Install git, C-compiler, Fortran-compiler and autoreconf
 RUN apt-get update && apt-get install -y \
@@ -54,7 +54,7 @@ RUN ln -s /usr/bin/gfortran-10 /usr/bin/gfortran
 
 # Stage 1: Build the Python environment with tools
 #----------------------------------------------
-FROM compiler as python
+FROM compiler AS python
 
 # Update system level conda and add conda-forge as a channel
 RUN conda install mamba
@@ -75,7 +75,7 @@ RUN mamba create -y -n py37 python=3.7 numpy=1.17.3 scipy=1.3.1 netcdf4=1.4.2 nu
 
 # Stage 2: Build the FRE NCtools
 #----------------------------------------------
-FROM compiler as fretools
+FROM compiler AS fretools
 
 # FRE-NCtools version
 ARG FRENC_COMMIT=dcbfc10
@@ -91,7 +91,7 @@ RUN apt list --installed > /opt/fre-nctools/version_record.txt
 
 # Stage 3: Assemble Python Toolsets
 #---------------------------------------------
-FROM base as tools
+FROM base AS tools
 
 ARG UNPRIV_USER=griduser
 
@@ -109,7 +109,7 @@ RUN cd $TOOLDIR && git clone --recursive https://github.com/jkrasting/grid_gener
 
 # Stage 4: Install Python packages in developer mode
 #---------------------------------------------
-from python as python-installed
+FROM python AS python-installed
 
 # Specify tool directory
 ARG TOOLDIR=/opt/tools
@@ -128,7 +128,7 @@ RUN cd $TOOLDIR/sloppy && pip install -e .
 
 # Stage 5: Build OM4 Preprocessing Tools
 #---------------------------------------------
-from python-installed as om4preprocess
+FROM python-installed AS om4preprocess
 
 #ARG UNPRIV_USER=griduser
 #
