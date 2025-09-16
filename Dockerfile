@@ -37,7 +37,6 @@ RUN mkdir -p /pad/$UNPRIV_USER
 RUN chown $UNPRIV_USER:$UNPRIV_USER /pad/$UNPRIV_USER
 RUN usermod -d /pad/$UNPRIV_USER $UNPRIV_USER
 
-
 # Stage 0: Compiler Tools
 #----------------------------------------------
 FROM base AS compiler
@@ -64,13 +63,50 @@ ARG UNPRIV_USER=griduser
 USER $UNPRIV_USER
 
 # Create a new conda environment with Python 3.11 and the necessary packages
-RUN mamba create -y -n py311 python=3.11 numpy scipy matplotlib cartopy netcdf4 pytest xarray dask numba tqdm xesmf xgcm seawater jupyter cmocean
+RUN mamba create -y --prefix /pad/griduser/.conda/envs/py311 \
+    python=3.11.8=hab00c5b_0_cpython \
+    numpy=1.26.4=py311h64a7726_0 \
+    scipy=1.13.0=py311h64a7726_0 \
+    matplotlib=3.8.4=py311h38be061_0 \
+    cartopy=0.22.0=py311h320fe9a_1 \
+    netcdf4=1.6.5=nompi_py311he8ad708_100 \
+    pytest=8.1.1=pyhd8ed1ab_0 \
+    xarray=2024.3.0=pyhd8ed1ab_0 \
+    dask=2024.4.1=pyhd8ed1ab_0 \
+    numba=0.59.1=py311h96b013e_0 \
+    tqdm=4.66.2=pyhd8ed1ab_0 \
+    xesmf=0.8.4=pyhd8ed1ab_1 \
+    xgcm=0.8.1=pyhd8ed1ab_0 \
+    seawater=3.3.4=py_1 \
+    jupyter=1.0.0=pyhd8ed1ab_10 \
+    cmocean=4.0.3=pyhd8ed1ab_0 
 
 # Create a Python 2.7 environment for the legacy tools
-RUN mamba create -y -n py27 python=2.7 numpy basemap blas cftime geos glib gstreamer hdf4 hdf5 matplotlib netcdf4 proj4 pyproj scipy gsw
+RUN mamba create -y --prefix /pad/griduser/.conda/envs/py27 \
+    python=2.7.15=h5a48372_1011_cpython \
+    numpy=1.16.5=py27h95a1406_0 \
+    basemap=1.2.1=py27hd1be537_2 \
+    blas=2.20=mkl \
+    cftime=1.1.1=py27h588f082_0 \
+    geos=3.8.0=he1b5a44_1 \
+    glib=2.66.3=h58526e2_0 \
+    gstreamer=1.14.5=h36ae1b5_2 \
+    gsw=3.0.6=py27_0 \
+    hdf4=4.2.15=h9772cbc_5 \
+    hdf5=1.10.5=nompi_h7c3c948_1111 \
+    matplotlib=2.2.5=ha770c72_3 \
+    netcdf4=1.5.3=nompi_py27hd35fb8e_102 \
+    proj4=5.2.0=he1b5a44_1006 \
+    pyproj=1.9.6=py27h516909a_1002 \
+    scipy=1.2.1=py27h921218d_2
 
 # Create a Python 3.7 environment for the river runoff regridding
-RUN mamba create -y -n py37 python=3.7 numpy=1.17.3 scipy=1.3.1 netcdf4=1.4.2 numba=0.50.1
+RUN mamba create -y --prefix /pad/griduser/.conda/envs/py37 \
+    python=3.7.12=hf930737_100_cpython \
+    numpy=1.17.3=py37h95a1406_0 \
+    scipy=1.3.1=py37h921218d_2 \
+    netcdf4=1.4.2=py37had69b76_1001 \
+    numba=0.50.1=py37h0da4684_1 
 
 
 # Stage 2: Build the FRE NCtools
