@@ -262,6 +262,8 @@ coupled_mosaic: ocean_mosaic
             --mosaic_name mosaic \
             --ocean_topog ocean_topog.nc
 
+check:
+	md5sum -c hash.md5
 
 # Include additional makefile(s) defining input datasets
 include *.mk
